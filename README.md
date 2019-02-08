@@ -1,6 +1,8 @@
 # dx9osd hook DLL
 
-Ingame OSD messages for Direct3D9 games  
+Ingame OSD overlay messages for Direct3D9 games  
+
+[**>> Download here**](https://github.com/setsumi/dx9osd/releases)
 
 Built with Microsoft DirectX 9 SDK (June 2010) and Microsoft Detours 4.0.1 library (included)  
 
