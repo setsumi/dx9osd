@@ -1,0 +1,7 @@
+# Build dirs
+/Debug
+/Release
+/x64
+
+/**/*.ncb
+/**/*.user
