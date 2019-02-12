@@ -136,10 +136,13 @@ bool InitD3D()
 	d3dpp.BackBufferHeight = 0;
 	d3dpp.hDeviceWindow = hMsgWnd;
 
-	HRESULT hr = pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hMsgWnd,
-		D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &pd3dDevice);
-	if (FAILED(hr))
-	{
+	HRESULT hr;
+	for (int i = 0; i < 3; i++) { // first try may fail, so do it 3 times for good measure
+		hr = pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hMsgWnd,
+			D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &pd3dDevice);
+		if (hr == D3D_OK) break;
+	}
+	if (FAILED(hr)) {
 		Log(LOGP"InitD3D(): CreateDevice() fail, error: 0x%X\n", hr);
 		pD3D->Release();
 		return false;
