@@ -29,8 +29,19 @@ void Log(const char* format, ...)
 	va_list argptr;
 	va_start(argptr, format);
 	vfprintf(stderr, format, argptr);
-	if (gpLogFile) vfprintf(gpLogFile, format, argptr);
+	if (gpLogFile) {
+		vfprintf(gpLogFile, format, argptr);
+		fflush(gpLogFile);
+	}
 	va_end(argptr);
+}
+void Fatal(char *message)
+{
+	Log(message);
+	Sleep(5000); // wait for game to display its window
+	MessageBoxA(NULL, message, "dx9osd", MB_OK|MB_ICONERROR|MB_SETFOREGROUND);
+	HANDLE hnd = OpenProcess(PROCESS_TERMINATE, TRUE, GetCurrentProcessId());
+	TerminateProcess(hnd, 0);
 }
 
 //---------------------------------------------------------------------------
@@ -136,18 +147,15 @@ bool InitD3D()
 	d3dpp.BackBufferHeight = 0;
 	d3dpp.hDeviceWindow = hMsgWnd;
 
-	HRESULT hr;
-	for (int i = 0; i < 3; i++) { // first try may fail, so do it 3 times for good measure
-		hr = pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hMsgWnd,
-			D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &pd3dDevice);
-		if (hr == D3D_OK) break;
-	}
-	if (FAILED(hr)) {
+	HRESULT hr = pD3D->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, hMsgWnd,
+		D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &pd3dDevice);
+	if (FAILED(hr))
+	{
 		Log(LOGP"InitD3D(): CreateDevice() fail, error: 0x%X\n", hr);
 		pD3D->Release();
 		return false;
 	}
-	Log(LOGP"InitD3D(): CreateDevice() - OK\n", hr);
+	Log(LOGP"InitD3D(): CreateDevice() - OK\n");
 
 #ifdef _WIN64
 #define DWORD__ DWORD64
@@ -236,14 +244,14 @@ void TW()
 {
 	// create window
 	if (NULL == (hMsgWnd = CreateMessageWindow())) {
-		Log(LOGP"TW: Create message window fail\n");
+		Fatal(LOGP"TW: Create message window fail\n");
 		return;
 	}
 	Log(LOGP"TW: Create message window - OK\n");
 
 	// init D3D
 	if (!InitD3D()) {
-		Log(LOGP"TW: Init D3D fail\n");
+		Fatal(LOGP"TW: Init D3D fail\n");
 		return;
 	}
 	Log(LOGP"TW: Init D3D - OK, entering window message loop\n");
