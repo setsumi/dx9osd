@@ -98,29 +98,51 @@ HRESULT WINAPI hkEndScene(LPDIRECT3DDEVICE9 pDev)
 			}
 		}
 
-		// Init stuff on each message
-		if (gFrameCounter == 1) // first frame of a message
+		if (gMaxFrames == 1) // take screenshot
 		{
-			Log(LOGP"hkEndScene(): Message init hit\n");
+			Log(LOGP"hkEndScene(): Take screenshot hit\n");
 
-			// measure text rectangle
-			SetRect((LPRECT)&m_rec, 0, 0, 0, 0);
-			m_font->DrawText( NULL, gMsgText, -1, (LPRECT)&m_rec, DT_CALCRECT, D3DXCOLOR(1.0f, 0.0f, 0.0f, 1.0f));
-			// add borders
-			m_rec.x2 += TEXT_BORDER * 2;
-			m_rec.y2 += TEXT_BORDER * 2;
-			if (m_rec.x2 > (LONG)viewP.Width) m_rec.x2 = viewP.Width - 1;
-			if (m_rec.y2 > (LONG)viewP.Height) m_rec.x2 = viewP.Height - 1;
+			SYSTEMTIME lt;
+			GetLocalTime(&lt);
+			wchar_t tName[MAX_PATH];
+			wsprintf(tName, L"%sdx9osd[%04d%02d%02d-%02d%02d%02d_%04d].png", gMsgText,
+				lt.wYear, lt.wMonth, lt.wDay, lt.wHour, lt.wMinute, lt.wSecond, lt.wMilliseconds);
 
-			LONG shX = (viewP.Width - m_rec.x2) / 2;
-			LONG shY = (viewP.Height - m_rec.y2) / 2;
-			SetRect((LPRECT)&m_rec, m_rec.x1 + shX, m_rec.y1 + shY, m_rec.x2 + shX, m_rec.y2 + shY);
-			SetRect(&fontRect, m_rec.x1 + TEXT_BORDER, m_rec.y1 + TEXT_BORDER, m_rec.x2, m_rec.y2);
+			IDirect3DSurface9* pDestTarget;
+			HRESULT hr = pDev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_FORCE_DWORD, &pDestTarget);
+			if (hr == D3D_OK) {
+				D3DXSaveSurfaceToFileW(tName, D3DXIFF_PNG, pDestTarget, NULL, NULL);
+				pDestTarget->Release();
+			} else {
+				Log(LOGP"hkEndScene(): GetBackBuffer() fail: 0x%X\n", hr);
+			}
 		}
+		else // display OSD message
+		{
+			// Init stuff on each message
+			if (gFrameCounter == 1) // first frame of a message
+			{
+				Log(LOGP"hkEndScene(): Message init hit\n");
 
-		// Draw rectangle and text
-		IDirect3DDevice9_Clear(pDev, 1, &m_rec, D3DCLEAR_TARGET, bkgColor, 1.0f, 0);	
-		m_font->DrawText(NULL, gMsgText, -1, &fontRect, 0, fontColor);
+				// measure text rectangle
+				SetRect((LPRECT)&m_rec, 0, 0, 0, 0);
+				m_font->DrawText( NULL, gMsgText, -1, (LPRECT)&m_rec, DT_CALCRECT, D3DXCOLOR(1.0f, 0.0f, 0.0f, 1.0f));
+				// add borders
+				m_rec.x2 += TEXT_BORDER * 2;
+				m_rec.y2 += TEXT_BORDER * 2;
+				if (m_rec.x2 > (LONG)viewP.Width) m_rec.x2 = viewP.Width - 1;
+				if (m_rec.y2 > (LONG)viewP.Height) m_rec.x2 = viewP.Height - 1;
+
+				LONG shX = (viewP.Width - m_rec.x2) / 2;
+				LONG shY = (viewP.Height - m_rec.y2) / 2;
+				SetRect((LPRECT)&m_rec, m_rec.x1 + shX, m_rec.y1 + shY, m_rec.x2 + shX, m_rec.y2 + shY);
+				SetRect(&fontRect, m_rec.x1 + TEXT_BORDER, m_rec.y1 + TEXT_BORDER, m_rec.x2, m_rec.y2);
+			}
+
+			// Draw rectangle and text
+			IDirect3DDevice9_Clear(pDev, 1, &m_rec, D3DCLEAR_TARGET, bkgColor, 1.0f, 0);	
+			m_font->DrawText(NULL, gMsgText, -1, &fontRect, 0, fontColor);
+		}
 	}
 endscene_ret:
 	return oEndScene(pDev);
@@ -151,7 +173,7 @@ bool InitD3D()
 		D3DCREATE_HARDWARE_VERTEXPROCESSING, &d3dpp, &pd3dDevice);
 	if (FAILED(hr))
 	{
-		Log(LOGP"InitD3D(): CreateDevice() fail, error: 0x%X\n", hr);
+		Log(LOGP"InitD3D(): CreateDevice() fail: 0x%X\n", hr);
 		pD3D->Release();
 		return false;
 	}
@@ -317,7 +339,8 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 			Log(LOGP"%s Version %ls\n", APPNAME__, version);
 
 			// do our work
-			CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)TW, 0, 0, 0);
+			HANDLE h = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE)TW, 0, 0, 0);
+			CloseHandle(h);
 		}
 		break;
 	case DLL_PROCESS_DETACH:
